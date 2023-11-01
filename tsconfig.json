@@ -2,34 +2,6 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "display": "Default",
   "compilerOptions": {
-    "skipLibCheck": true,
-    "strict": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "noEmit": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "strictNullChecks": true,
-    "isolatedModules": true,
-    "experimentalDecorators": false,
-    "strictPropertyInitialization": false,
-    "removeComments": true,
-    "composite": false,
-    "noImplicitAny": true,
-    "alwaysStrict": true,
-    "noImplicitThis": true,
-    "emitDecoratorMetadata": false,
-    "stripInternal": true,
-    "importHelpers": false,
-    "useUnknownInCatchVariables": false,
-    "lib": [
-      "ESNext",
-      "DOM"
-    ],
-    "moduleResolution": "nodenext",
-    "module": "ESNext",
-    "target": "ESNext"
+    "importHelpers": false
   }
 }
