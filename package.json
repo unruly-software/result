@@ -10,7 +10,7 @@
     "clean": "rm -rf ./dist",
     "test": "vitest",
     "version": "changeset version",
-    "release": "CI=true yarn --mode=update-lockfile && yarn build && yarn test && changeset publish",
+    "release": "CI=true yarn --mode=update-lockfile && yarn build && CI=true yarn test && changeset publish",
     "ci": "CI=true yarn build && yarn test"
   },
   "devDependencies": {
