@@ -11,6 +11,7 @@
     "test": "vitest",
     "version": "changeset version",
     "release": "CI=true yarn --mode=update-lockfile && yarn build && CI=true yarn test && changeset publish",
+    "lint": "eslint src/**/*",
     "ci": "CI=true yarn build && yarn test && yarn lint"
   },
   "devDependencies": {

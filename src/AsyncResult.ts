@@ -1,6 +1,6 @@
-import {Result, Fail, Success} from './Result'
+import { Result, Fail, Success } from './Result'
 
-import {ResultTimeoutError} from './ResultTimeout'
+import { ResultTimeoutError } from './ResultTimeout'
 
 type UnwrappedAsyncResult<T, E extends Error = Error> = AsyncResult<
   Awaited<T>,
@@ -173,9 +173,9 @@ export class AsyncResult<T, F extends Error = Error>
             () =>
               rej(
                 error ??
-                new ResultTimeoutError(
-                  `Timeout of ${ms} milliseconds exceeded`,
-                ),
+                  new ResultTimeoutError(
+                    `Timeout of ${ms} milliseconds exceeded`,
+                  ),
               ),
             ms,
           )
