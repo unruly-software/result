@@ -1,5 +1,5 @@
-import { AsyncResult } from './AsyncResult'
-import { asyncIdentity, identity } from './methods'
+import {AsyncResult} from './AsyncResult'
+import {asyncIdentity, identity} from './methods'
 
 export abstract class Result<T, F extends Error = Error> {
   /**
