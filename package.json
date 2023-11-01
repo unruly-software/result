@@ -1,0 +1,39 @@
+{
+  "name": "@unruly-software/result",
+  "packageManager": "yarn@3.5.0",
+  "version": "0.0.1",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "microbundle",
+    "build:watch": "microbundle dev",
+    "clean": "rm -rf ./dist",
+    "test": "vitest",
+    "version": "changeset version",
+    "release": "CI=true yarn --mode=update-lockfile && yarn build && yarn test && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.4.8",
+    "@changesets/cli": "^2.26.2",
+    "@vitest/coverage-istanbul": "^0.32.2",
+    "microbundle": "^0.15.1",
+    "typescript": "5.0.4",
+    "vitest": "^0.31.3"
+  },
+  "amdName": "result",
+  "main": "dist/result.js",
+  "module": "dist/result.module.js",
+  "types": "dist/index.d.ts",
+  "umd:main": "dist/result.umd.js",
+  "source": "src/index.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    "./*": "./*",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "umd": "./dist/result.umd.js",
+      "import": "./dist/result.mjs",
+      "require": "./dist/result.js"
+    }
+  }
+}
