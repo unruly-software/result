@@ -2,10 +2,7 @@
 name: Build
 
 on:
-  push:
-    paths-ignore:
-      - '.github/**'
-      - '**.md'
+  push: {}
 
 jobs:
   release:
