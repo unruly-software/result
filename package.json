@@ -10,7 +10,8 @@
     "clean": "rm -rf ./dist",
     "test": "vitest",
     "version": "changeset version",
-    "release": "CI=true yarn --mode=update-lockfile && yarn build && yarn test && changeset publish"
+    "release": "CI=true yarn --mode=update-lockfile && yarn build && yarn test && changeset publish",
+    "ci": "CI=true yarn build && yarn test"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.4.8",
