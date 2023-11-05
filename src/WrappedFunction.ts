@@ -42,6 +42,18 @@ interface AsyncWrappedFunction<P extends any[], RT, F extends Error = Error> {
   mapFailure<X extends Error = F>(
     mapFailure: (failed: F) => X,
   ): AsyncWrappedFunction<P, RT, X>
+
+  mapEither<X>(map: (value: RT | F) => X): AsyncWrappedFunction<P, X, F>
+
+  mapEitherAsync<X>(
+    map: (value: RT | F) => Promise<X>,
+  ): AsyncWrappedFunction<P, X, F>
+
+  tapEither(tap: (value: RT | F) => unknown): AsyncWrappedFunction<P, RT, F>
+
+  tapEitherAsync(
+    tap: (value: RT | F) => Promise<unknown>,
+  ): AsyncWrappedFunction<P, RT, F>
 }
 
 export function wrapAsyncFunction<
@@ -124,6 +136,38 @@ export function wrapAsyncFunction<
     return wrapAsyncFunction(async (...args: Parameters<FN>) => {
       return wrapped(...args)
         .mapFailure(mapFailure)
+        .get()
+    })
+  }
+
+  wrapped.mapEither = (map) => {
+    return wrapAsyncFunction(async (...args: Parameters<FN>) => {
+      return wrapped(...args)
+        .mapEither(map)
+        .get()
+    })
+  }
+
+  wrapped.mapEitherAsync = (map) => {
+    return wrapAsyncFunction(async (...args: Parameters<FN>) => {
+      return wrapped(...args)
+        .mapEitherAsync(map)
+        .get()
+    })
+  }
+
+  wrapped.tapEither = (tap) => {
+    return wrapAsyncFunction(async (...args: Parameters<FN>) => {
+      return wrapped(...args)
+        .tapEither(tap)
+        .get()
+    })
+  }
+
+  wrapped.tapEitherAsync = (tap) => {
+    return wrapAsyncFunction(async (...args: Parameters<FN>) => {
+      return wrapped(...args)
+        .tapEitherAsync(tap)
         .get()
     })
   }

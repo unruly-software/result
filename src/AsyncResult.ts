@@ -250,4 +250,35 @@ export class AsyncResult<T, F extends Error = Error>
   ): AsyncResult<T, X> {
     return new AsyncResult(this.then((result) => result.mapFailure(mapFailure)))
   }
+
+  /**
+   * Apply a function to either the success or failure value and in the process
+   * recover from a failure.
+   */
+  mapEither<X>(map: (value: T | F) => X): AsyncResult<X, F> {
+    return new AsyncResult(this.then((result) => result.mapEither(map)))
+  }
+
+  /**
+   * Apply a function to either the success or failure value asynchronously
+   * and in the process recover from a failure.
+   */
+  mapEitherAsync<X>(map: (value: T | F) => Promise<X>): AsyncResult<X> {
+    return new AsyncResult(this.then((result) => result.mapEitherAsync(map)))
+  }
+
+  /**
+   * Apply a function to either the success or failure value  without modifying its value
+   **/
+  tapEither(tap: (value: T | F) => unknown): AsyncResult<T, F> {
+    return this.tap(tap, tap)
+  }
+
+  /**
+   * Apply a function to either the success or failure value asynchronously
+   * without modifying its value
+   **/
+  tapEitherAsync(tap: (value: T | F) => Promise<unknown>): AsyncResult<T, F> {
+    return this.tapAsync(tap, tap)
+  }
 }
