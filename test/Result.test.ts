@@ -11,7 +11,7 @@ interface TestCase<T, Y> {
   assert: (value: any) => any
 }
 
-const testBoth = <T, Y>(name: string, test: TestCase<T, Y>) => {
+const testAll = <T, Y>(name: string, test: TestCase<T, Y>) => {
   describe(name, () => {
     it('it should work given AsyncResult', async () => {
       const setup = test.setup().mapAsync(async (v) => v) as any
@@ -24,46 +24,42 @@ const testBoth = <T, Y>(name: string, test: TestCase<T, Y>) => {
     it('it should work given Result', async () => {
       await test.assert(await test.transform(await test.setup()).getEither())
     })
+    it('should work given a wrapped async function', async () => {
+      const wrapped: any = AsyncResult.wrap(async () => {
+        return test.setup().get()
+      })
+      // @ts-expect-error
+      const transformed = await test.transform(wrapped)().getEither()
+      test.assert(transformed)
+    })
   })
 }
 
-testBoth('map', {
+testAll('map', {
   setup: () => Result.success(value),
   transform: (result) => result.map(() => 'Other value'),
   assert: (value) => expect(value).toEqual('Other value'),
 })
 
-testBoth('map(failure)', {
+testAll('map(failure)', {
   setup: () => Result.fail(error),
   transform: (result) => result.mapFailure(() => new Error('Other error')),
   assert: (value) => expect((value as Error).message).toEqual('Other error'),
 })
 
-testBoth('wrap(sync method failure)', {
+testAll('wrap(sync method failure)', {
   setup: () => Result.wrap(JSON.parse)('}'),
   transform: (result) => result,
   assert: (value) => expect(value.message).matches(/Unexpected token/),
 })
 
-testBoth('wrap(async method failure)', {
+testAll('wrap(async method failure)', {
   setup: () => Result.wrapAsync(JSON.parse)('}'),
   transform: (result) => result,
   assert: (value) => expect(value.message).matches(/Unexpected token/),
 })
 
-// testBoth('invoke(async)', {
-//   setup: () => AsyncResult.invoke(JSON.parse, '}'),
-//   transform: (result) => result,
-//   assert: (value) => expect(value.message).matches(/Unexpected token/),
-// })
-
-// testBoth('invoke(async)', {
-//   setup: () => AsyncResult.invoke(JSON.parse, '{"value": "value"}'),
-//   transform: (result) => result,
-//   assert: (value) => expect(value.value).toEqual('value'),
-// })
-
-testBoth('tap(async)', {
+testAll('tap(async)', {
   setup: () => AsyncResult.success(value),
   transform: (result) =>
     result.tap(
@@ -73,7 +69,7 @@ testBoth('tap(async)', {
   assert: (value) => expect(value).toEqual('Value'),
 })
 
-testBoth('tapAsync(async)', {
+testAll('tapAsync(async)', {
   setup: () => AsyncResult.success(value),
   transform: (result) =>
     result.tapAsync(
@@ -83,14 +79,14 @@ testBoth('tapAsync(async)', {
   assert: (value) => expect(value).toEqual('Value'),
 })
 
-testBoth('flatMapAsync', {
+testAll('flatMapAsync', {
   setup: () => AsyncResult.success(value),
   transform: (result) =>
     result.flatMapAsync(() => AsyncResult.success('Other value')),
   assert: (value) => expect(value).toEqual('Other value'),
 })
 
-testBoth('flatMap', {
+testAll('flatMap', {
   setup: () => AsyncResult.success(value),
   transform: (result) => result.flatMap(() => Result.success('Other value')),
   assert: (value) => expect(value).toEqual('Other value'),
@@ -137,21 +133,6 @@ describe('Result', () => {
 })
 
 describe(AsyncResult.name, function () {
-  // it('unwraps a promised result', async function () {
-  //   const success = await AsyncResult.unwrapResult(
-  //     Promise.resolve(Result.success(value)),
-  //   ).map((i) => i)
-  //   const fail = await AsyncResult.unwrapResult(
-  //     Promise.resolve(Result.fail(error)),
-  //   ).mapFailure((e) => e)
-
-  //   expect(success.getEither()).toEqual(value)
-  //   expect(success.isSuccess()).toBeTruthy()
-
-  //   expect(fail.isFail()).toBeTruthy()
-  //   expect(fail.getEither()).toEqual(error)
-  // })
-
   it('is thenable', async () => {
     const result = await AsyncResult.success(null).then((syncResult) =>
       syncResult.map(() => 'value'),
@@ -285,7 +266,7 @@ describe('unwrapResult', () => {
   })
 
   it('should fail correctly if given a non-result type', async () => {
-    const result = AsyncResult.unwrapResult(null)
+    const result = AsyncResult.unwrapResult<null>(null)
 
     expectTypeOf<typeof result>().toBeNever()
 
@@ -300,4 +281,34 @@ describe('unwrapResult', () => {
       '"unwrapResult was called with a non-result type"',
     )
   })
+})
+
+it('should wrap an async function', async () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const wrapped = AsyncResult.wrap(async (__: number) => value)
+  expectTypeOf(wrapped).toEqualTypeOf<(v: number) => AsyncResult<string>>()
+
+  expectTypeOf(wrapped.withTimeout(100)).toEqualTypeOf<
+    (v: number) => AsyncResult<string>
+  >()
+
+  expectTypeOf(wrapped.map(() => 'MAPPED' as const)).toEqualTypeOf<
+    (v: number) => AsyncResult<'MAPPED'>
+  >()
+
+  expectTypeOf(
+    wrapped.mapAsync(async () => 'ASYNC_MAPPED' as const),
+  ).toEqualTypeOf<(v: number) => AsyncResult<'ASYNC_MAPPED'>>()
+
+  expectTypeOf(wrapped.mapAsync(async () => 'MAPPED' as const)).toEqualTypeOf<
+    (v: number) => AsyncResult<'MAPPED'>
+  >()
+
+  expectTypeOf(wrapped.mapFailure(() => error)).toEqualTypeOf<
+    (v: number) => AsyncResult<string>
+  >()
+
+  const mapped = wrapped.map(() => 'MAPPED')
+
+  expect(await mapped(1).get()).toEqual('MAPPED')
 })
