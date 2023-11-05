@@ -1,6 +1,7 @@
 import { Result, Fail, Success } from './Result'
 
 import { ResultTimeoutError } from './ResultTimeout'
+import { wrapAsyncFunction } from './WrappedFunction'
 
 type UnwrappedAsyncResult<T, E extends Error = Error> = AsyncResult<
   Awaited<T>,
@@ -21,15 +22,7 @@ export class AsyncResult<T, F extends Error = Error>
    * const maybeUser = await safeGetUser(userId) // AsyncResult<User, Error>
    * ```
    */
-  static wrap<FN extends (...args: any[]) => any>(fn: FN) {
-    return (
-      ...args: Parameters<FN>
-    ): FN extends (...args: any[]) => Promise<infer RT>
-      ? AsyncResult<RT>
-      : never => {
-      return AsyncResult.invoke(fn as any, ...(args as any[])) as any
-    }
-  }
+  static wrap = wrapAsyncFunction
 
   /**
    * Invoke a function that returns a promise and wrap the result in an
