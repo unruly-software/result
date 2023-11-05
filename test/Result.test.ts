@@ -24,6 +24,7 @@ const testAll = <T, Y>(name: string, test: TestCase<T, Y>) => {
     it('it should work given Result', async () => {
       await test.assert(await test.transform(await test.setup()).getEither())
     })
+
     it('should work given a wrapped async function', async () => {
       const wrapped: any = AsyncResult.wrap(async () => {
         return test.setup().get()
@@ -90,6 +91,42 @@ testAll('flatMap', {
   setup: () => AsyncResult.success(value),
   transform: (result) => result.flatMap(() => Result.success('Other value')),
   assert: (value) => expect(value).toEqual('Other value'),
+})
+
+testAll('mapEither', {
+  setup: () => Result.success(value),
+  transform: (result) => result.mapEither(() => 'Other value'),
+  assert: (value) => expect(value).toEqual('Other value'),
+})
+
+testAll('mapEither(failure)', {
+  setup: () => Result.fail(error),
+  transform: (result) => result.mapEither(() => 'Other value'),
+  assert: (value) => expect(value).toEqual('Other value'),
+})
+
+testAll('tapEither', {
+  setup: () => Result.success(value),
+  transform: (result) => result.tapEither(() => 'Other value'),
+  assert: (passed) => expect(passed).toEqual(value),
+})
+
+testAll('tapEither(failure)', {
+  setup: () => Result.fail(error),
+  transform: (result) => result.tapEither(() => 'Other value'),
+  assert: (passed) => expect(passed).toEqual(error),
+})
+
+testAll('tapEitherAsync', {
+  setup: () => Result.success(value),
+  transform: (result) => result.tapEitherAsync(async () => 'Other value'),
+  assert: (passed) => expect(passed).toEqual(value),
+})
+
+testAll('tapEitherAsync(failure)', {
+  setup: () => Result.fail(error),
+  transform: (result) => result.tapEitherAsync(async () => 'Other value'),
+  assert: (passed) => expect(passed).toEqual(error),
 })
 
 describe('Result', () => {

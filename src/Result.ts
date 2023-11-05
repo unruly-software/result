@@ -285,6 +285,39 @@ export abstract class Result<T, F extends Error = Error> {
   }
 
   /**
+   * Apply a function to either the success or failure value and in the process
+   * recover from a failure.
+   */
+  mapEither<X>(map: (value: T | F) => X): Result<X, F> {
+    const mapFunc = this.isFail() ? this.recover : this.map
+    return mapFunc.call(this, map)
+  }
+
+  /**
+   * Apply a function to either the success or failure value asynchronously
+   * and in the process recover from a failure.
+   */
+  mapEitherAsync<X>(map: (value: T | F) => Promise<X>): AsyncResult<X> {
+    const mapFunc = this.isFail() ? this.recoverAsync : this.mapAsync
+    return mapFunc.call(this, map)
+  }
+
+  /**
+   * Apply a function to either the success or failure value  without modifying its value
+   **/
+  tapEither(tap: (value: T | F) => unknown): Result<T, F> {
+    return this.tap(tap, tap)
+  }
+
+  /**
+   * Apply a function to either the success or failure value asynchronously
+   * without modifying its value
+   **/
+  tapEitherAsync(tap: (value: T | F) => Promise<unknown>): AsyncResult<T, F> {
+    return this.tapAsync(tap, tap)
+  }
+
+  /**
    * Attempt to recover from a failure by mapping the error value to a success
    * value. If the result is a success, the mapping function is ignored.
    *
