@@ -56,6 +56,11 @@ type RetriesConfig<P, MaxRetries extends number> =
        * only be called up to this many times.
        */
       maxRetries: MaxRetries
+      /**
+       * Determines whether or not to retry. If this function returns false the
+       * wrapped function will not be called again even if maxRetries has not
+       * been reached.
+       */
       shouldRetry?: (attempt: {
         args: P
         error: Error
