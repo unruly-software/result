@@ -1,5 +1,72 @@
 import { AsyncResult } from './AsyncResult'
 import { ResultTimeoutError } from './ResultTimeout'
+import { IntRange } from './methods'
+
+interface CalculatedRetry {
+  /** The number of milliseconds to wait before retrying */
+  retryInMS: number
+}
+
+type RetriesConfig<P, MaxRetries extends number> =
+  | /**
+   * Each time the wrapped function throws an error, this function will be
+   * called to determine how long to wait before retrying.
+   *
+   * @example Retrying a rate limit every 1000ms up to 5 times
+   * ```ts
+   *  ({error, retries, args}) => {
+   *   if (error instanceof RateLimitError && retries < 5) {
+   *     return {retryInMS: 1000}
+   *   }
+   *   return null
+   *  }
+   * ```
+   */
+  ((attempt: {
+      /**
+       * The error that was thrown by the wrapped function
+       */
+      error: Error
+      /**
+       * The number of retries that have been attempted so far
+       */
+      retries: number
+      /**
+       * The arguments that were passed to the wrapped function
+       */
+      args: P
+    }) => Promise<CalculatedRetry | null> | CalculatedRetry | null)
+  | {
+      /**
+       * Initial delay in milliseconds. The first retry will be delayed by this
+       * amount. Subsequent retries will be multiplied by the delayMultiplier.
+       *
+       * The calculation is `initialDelayMS * delayMultiplier ** retries`
+       */
+      initialDelayMS: number
+      /**
+       * Given an initial dely of 1000ms and a delay multiplier of 2, the
+       * second retry will be delayed by 2000ms, the third by 4000ms, etc.
+       *
+       * @default 1.75
+       */
+      delayMultiplier?: number
+      /**
+       * The maximum number of retries to attempt. The wrapped function will
+       * only be called up to this many times.
+       */
+      maxRetries: MaxRetries
+      /**
+       * Determines whether or not to retry. If this function returns false the
+       * wrapped function will not be called again even if maxRetries has not
+       * been reached.
+       */
+      shouldRetry?: (attempt: {
+        args: P
+        error: Error
+        retries: IntRange<0, MaxRetries>
+      }) => boolean
+    }
 
 interface AsyncWrappedFunction<P extends any[], RT, F extends Error = Error> {
   (...args: P): AsyncResult<RT, F>
@@ -8,6 +75,10 @@ interface AsyncWrappedFunction<P extends any[], RT, F extends Error = Error> {
     ms: number,
     error?: E,
   ): AsyncWrappedFunction<P, RT, F | E>
+
+  withRetries<MaxRetries extends number>(
+    config: RetriesConfig<P, MaxRetries>,
+  ): AsyncWrappedFunction<P, RT, F>
 
   tap(
     mapSuccess: (success: RT) => unknown,
@@ -67,6 +138,68 @@ export function wrapAsyncFunction<
   > = ((...args) => {
     return AsyncResult.invoke(fn as any, ...(args as any[])) as any
   }) as any
+
+  wrapped.withRetries = (config) => {
+    if (typeof config === 'function') {
+      return wrapAsyncFunction(async (...args: Parameters<FN>) => {
+        let retries = 0
+        while (true) {
+          try {
+            return await wrapped(...args).get()
+          } catch (error) {
+            const calculated = await config({
+              error,
+              retries,
+              args,
+            })
+            if (!calculated || calculated.retryInMS <= 0) {
+              throw error
+            }
+            await new Promise((resolve) =>
+              setTimeout(resolve, calculated.retryInMS),
+            )
+            retries++
+          }
+        }
+      })
+    }
+
+    if (typeof config === 'object' && config) {
+      const delayMultiplier = config.delayMultiplier ?? 1.75
+
+      if (config.maxRetries < 1) {
+        throw new Error('maxRetries must be >= 1 for retry logic to work')
+      }
+
+      return wrapAsyncFunction(async (...args: Parameters<FN>) => {
+        let retries = 0
+        while (true) {
+          try {
+            return await wrapped(...args).get()
+          } catch (error) {
+            if (retries >= config.maxRetries) {
+              throw error
+            }
+            const retryInMS = config.initialDelayMS * delayMultiplier ** retries
+            if (
+              config.shouldRetry &&
+              !(await config.shouldRetry({
+                error,
+                retries: retries as any,
+                args,
+              }))
+            ) {
+              throw error
+            }
+            await new Promise((resolve) => setTimeout(resolve, retryInMS))
+            retries++
+          }
+        }
+      })
+    }
+
+    throw new Error('Invalid retry config')
+  }
 
   wrapped.withTimeout = (ms, error) => {
     return wrapAsyncFunction(async (...args: Parameters<FN>) => {
