@@ -1,5 +1,12 @@
 # @unruly-software/result
 
+## 1.0.2
+
+### Patch Changes
+
+- 650278c: Export WrappedFunction
+  Adds the `.unwrap()` function to the AsyncWrappedFunction that allows mapping the function to a vanilla Promise<T> returning function
+
 ## 1.0.1
 
 ### Patch Changes
