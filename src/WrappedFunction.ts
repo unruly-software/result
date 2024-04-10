@@ -84,6 +84,8 @@ export interface AsyncWrappedFunction<
     config: RetriesConfig<P, MaxRetries>,
   ): AsyncWrappedFunction<P, RT, F>
 
+  unwrap(): (...args: P) => Promise<RT>
+
   tap(
     mapSuccess: (success: RT) => unknown,
     mapError?: (error: F) => unknown,
@@ -203,6 +205,10 @@ export function wrapAsyncFunction<
     }
 
     throw new Error('Invalid retry config')
+  }
+
+  wrapped.unwrap = () => {
+    return async (...args: Parameters<FN>) => wrapped(...args).get() as any
   }
 
   wrapped.withTimeout = (ms, error) => {

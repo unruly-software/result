@@ -348,6 +348,22 @@ it('should wrap an async function', async () => {
   const mapped = wrapped.map(() => 'MAPPED')
 
   expect(await mapped(1).get()).toEqual('MAPPED')
+
+  const unwrapped = wrapped.unwrap()
+
+  expectTypeOf(unwrapped).toEqualTypeOf<(v: number) => Promise<string>>()
+  expect(await unwrapped(1)).toEqual(value)
+})
+
+it('should wrap an async function that fails', async () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const wrapped = AsyncResult.wrap(async (__: number) => {
+    throw error
+  })
+
+  await expect(wrapped(1).get()).rejects.toThrowError(error)
+
+  await expect(() => wrapped.unwrap()(1)).rejects.toEqual(error)
 })
 
 const errorThrower = <T>(times: number, error: Error, result: T) => {
