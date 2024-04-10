@@ -2,12 +2,12 @@ import { AsyncResult } from './AsyncResult'
 import { ResultTimeoutError } from './ResultTimeout'
 import { IntRange } from './methods'
 
-interface CalculatedRetry {
+export interface CalculatedRetry {
   /** The number of milliseconds to wait before retrying */
   retryInMS: number
 }
 
-type RetriesConfig<P, MaxRetries extends number> =
+export type RetriesConfig<P, MaxRetries extends number> =
   | /**
    * Each time the wrapped function throws an error, this function will be
    * called to determine how long to wait before retrying.
@@ -68,7 +68,11 @@ type RetriesConfig<P, MaxRetries extends number> =
       }) => boolean
     }
 
-interface AsyncWrappedFunction<P extends any[], RT, F extends Error = Error> {
+export interface AsyncWrappedFunction<
+  P extends any[],
+  RT,
+  F extends Error = Error,
+> {
   (...args: P): AsyncResult<RT, F>
 
   withTimeout<E extends Error = ResultTimeoutError>(
@@ -79,6 +83,8 @@ interface AsyncWrappedFunction<P extends any[], RT, F extends Error = Error> {
   withRetries<MaxRetries extends number>(
     config: RetriesConfig<P, MaxRetries>,
   ): AsyncWrappedFunction<P, RT, F>
+
+  unwrap(): (...args: P) => Promise<RT>
 
   tap(
     mapSuccess: (success: RT) => unknown,
@@ -199,6 +205,10 @@ export function wrapAsyncFunction<
     }
 
     throw new Error('Invalid retry config')
+  }
+
+  wrapped.unwrap = () => {
+    return async (...args: Parameters<FN>) => wrapped(...args).get() as any
   }
 
   wrapped.withTimeout = (ms, error) => {
