@@ -10,9 +10,9 @@
     "clean": "rm -rf ./dist",
     "test": "vitest",
     "version": "changeset version",
-    "release": "CI=true corepack enable && yarn set version 3.5.0 && yarn --mode=update-lockfile && yarn build && CI=true yarn test && changeset publish",
+    "release": "CI=true yarn --mode=update-lockfile && yarn build && CI=true yarn test && changeset publish",
     "lint": "eslint src/**/*",
-    "ci": "CI=true corepack enable && yarn set version 3.5.0 && yarn build && CI=true yarn test && yarn lint && tsc --noEmit"
+    "ci": "CI=true yarn build && CI=true yarn test && yarn lint && tsc --noEmit"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^0.4.8",

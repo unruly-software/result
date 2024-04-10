@@ -25,7 +25,7 @@ jobs:
           node-version: 16.x
 
       - name: Install Dependencies
-        run: yarn
+        run: corepack enable && yarn set version 3.5.0 && yarn
 
       - name: Create Release Pull Request or Publish to npm
         id: changesets
