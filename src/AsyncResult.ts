@@ -8,6 +8,10 @@ type UnwrappedAsyncResult<T, E extends Error = Error> = AsyncResult<
   Awaited<E>
 >
 
+export interface IsomorphicAbortController {
+  abort(reason?: any): void
+}
+
 export class AsyncResult<T, F extends Error = Error>
   implements PromiseLike<Result<T, F>>
 {
@@ -39,7 +43,7 @@ export class AsyncResult<T, F extends Error = Error>
   static invoke<FN extends (...args: any[]) => Promise<any>>(
     fn: FN,
     ...args: Parameters<FN>
-  ): AsyncResult<ReturnType<FN>> {
+  ): UnwrappedAsyncResult<ReturnType<FN>> {
     return AsyncResult.fromPromise((async () => fn(...args))())
   }
 
@@ -156,22 +160,21 @@ export class AsyncResult<T, F extends Error = Error>
    */
   withTimeout<E extends Error = ResultTimeoutError>(
     ms: number,
-    error?: E,
+    extra?: { error?: E; abort?: IsomorphicAbortController },
   ): AsyncResult<T, F | E> {
     return AsyncResult.fromPromise(
       (async () => {
         let timeoutMarker: any
         const timeout = new Promise((_, rej) => {
-          timeoutMarker = setTimeout(
-            () =>
-              rej(
-                error ??
-                  new ResultTimeoutError(
-                    `Timeout of ${ms} milliseconds exceeded`,
-                  ),
-              ),
-            ms,
-          )
+          timeoutMarker = setTimeout(() => {
+            const error =
+              extra?.error ??
+              new ResultTimeoutError(`Timeout of ${ms} milliseconds exceeded`)
+            if (extra?.abort) {
+              extra.abort.abort(error)
+            }
+            rej(error)
+          }, ms)
         })
         try {
           await Promise.race([this, timeout])

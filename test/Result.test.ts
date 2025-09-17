@@ -1,6 +1,6 @@
-import { describe, expect, expectTypeOf, it } from 'vitest'
-import { AsyncResult, Fail, Result, ResultTimeoutError } from '../src'
-import { identity } from '../src/methods'
+import {describe, expect, expectTypeOf, it, vi} from 'vitest'
+import {AsyncResult, Fail, Result, ResultTimeoutError} from '../src'
+import {identity} from '../src/methods'
 
 const value = 'Value'
 const error = new Error('Error')
@@ -261,10 +261,23 @@ describe('Timeouts', () => {
   it('Throws a custom error', async () => {
     const err = new Error('This one')
     const result = await AsyncResult.fromPromise(timeout(100))
-      .withTimeout(1, err)
+      .withTimeout(1, {error: err})
       .getEither()
 
     expect(result).toEqual(err)
+  })
+
+  it('calls abort on timeout', async () => {
+    const abortController = new AbortController()
+    const abortSpy = vi.spyOn(abortController, 'abort')
+
+    const err = new Error('This one')
+    const result = await AsyncResult.fromPromise(timeout(100))
+      .withTimeout(1, {error: err, abort: abortController})
+      .getEither()
+
+    expect(result).toEqual(err)
+    expect(abortSpy).toHaveBeenCalledWith(err)
   })
 })
 
@@ -384,7 +397,7 @@ describe('withRetries', () => {
     ).withRetries({
       initialDelayMS: 1,
       maxRetries: 2,
-      shouldRetry: ({ retries }) => {
+      shouldRetry: ({retries}) => {
         expectTypeOf(retries).toEqualTypeOf<0 | 1>()
         expectTypeOf(retries).not.toEqualTypeOf<0 | 1 | 2>()
         seenRetries.push(retries)
@@ -403,7 +416,7 @@ describe('withRetries', () => {
       {
         initialDelayMS: 1,
         maxRetries: 2,
-        shouldRetry: ({ retries }) => {
+        shouldRetry: ({retries}) => {
           expectTypeOf(retries).toEqualTypeOf<0 | 1>()
           expectTypeOf(retries).not.toEqualTypeOf<0 | 1 | 2>()
           seenRetries.push(retries)
@@ -420,9 +433,9 @@ describe('withRetries', () => {
     const seenRetries: number[] = []
 
     const wrapped = AsyncResult.wrap(errorThrower(1, error, value)).withRetries(
-      ({ retries }) => {
+      ({retries}) => {
         seenRetries.push(retries)
-        return retries < 2 ? { retryInMS: 1 } : null
+        return retries < 2 ? {retryInMS: 1} : null
       },
     )
 
@@ -435,12 +448,125 @@ describe('withRetries', () => {
 
     const wrapped = AsyncResult.wrap(
       errorThrower(100, error, value),
-    ).withRetries(({ retries }) => {
+    ).withRetries(({retries}) => {
       seenRetries.push(retries)
-      return retries < 2 ? { retryInMS: 1 } : null
+      return retries < 2 ? {retryInMS: 1} : null
     })
 
     await expect(wrapped().get()).rejects.toEqual(error)
     expect(seenRetries).toEqual([0, 1, 2])
+  })
+})
+
+describe('types', () => {
+  it.skip('should pass type tests', () => {
+    /** .invoke/.invokeAsync */
+    expectTypeOf(AsyncResult.invoke(async () => 'value')).toEqualTypeOf<AsyncResult<string>>()
+    expectTypeOf(Result.invokeAsync(async () => 'value')).toEqualTypeOf<AsyncResult<string>>()
+    expectTypeOf(Result.invoke(async () => 'value')).toEqualTypeOf<Result<Promise<string>>>()
+
+    // @ts-expect-error Should not allow initializing a result without a promise
+    AsyncResult.invoke(() => 'value')
+
+    // @ts-expect-error Should not allow initializing a result without a promise
+    Result.invokeAsync(() => 'value')
+
+    /** Fail */
+    expectTypeOf(AsyncResult.fail<string, TypeError>(new TypeError('hi'))).toEqualTypeOf<AsyncResult<string>>()
+    expectTypeOf(Result.fail<string, TypeError>(new TypeError('hi'))).toEqualTypeOf<Result<string, TypeError>>()
+
+    /** Success */
+    expectTypeOf(AsyncResult.success('value')).toEqualTypeOf<AsyncResult<string>>()
+    expectTypeOf(Result.success('value')).toEqualTypeOf<Result<string>>()
+
+    /** fromPromise */
+    expectTypeOf(AsyncResult.fromPromise(Promise.resolve('value'))).toEqualTypeOf<AsyncResult<string>>()
+    expectTypeOf(Result.fromPromise(Promise.resolve('value'))).toEqualTypeOf<AsyncResult<string>>()
+
+
+    /** unwrapResult */
+    type Unwrappable<T> =
+      | Promise<Result<Promise<T>, Error>>
+      | Promise<Result<T, Error>>
+      | Promise<Result<Promise<T>, Error>>
+      | AsyncResult<T, Error>
+      | Result<T, Error>
+
+    const unwrappable: Unwrappable<'correct'> = null!
+    expectTypeOf(AsyncResult.unwrapResult(unwrappable)).toEqualTypeOf<AsyncResult<'correct'>>()
+
+    expectTypeOf(AsyncResult.unwrapResult(Promise.resolve(Result.success('value')))).toEqualTypeOf<AsyncResult<string>>()
+    expectTypeOf(AsyncResult.unwrapResult(Promise.resolve(Result.fail<string, TypeError>(new TypeError('hi'))))).toEqualTypeOf<AsyncResult<string>>()
+
+    /** withTimeout */
+    expectTypeOf(AsyncResult.success('value').withTimeout(100)).toEqualTypeOf<AsyncResult<string>>()
+
+    /** get */
+    expectTypeOf(AsyncResult.success('value').get()).toEqualTypeOf<Promise<string>>()
+    expectTypeOf(Result.success('value').get()).toEqualTypeOf<string>()
+
+    /** getEither */
+    expectTypeOf(AsyncResult.success('value').getEither()).toEqualTypeOf<Promise<string | Error>>()
+    expectTypeOf(Result.success('value').getEither()).toEqualTypeOf<string | Error>()
+
+    /** tap */
+    expectTypeOf(AsyncResult.success('value').tap(console.log)).toEqualTypeOf<AsyncResult<string>>()
+    expectTypeOf(Result.success('value').tap(console.log)).toEqualTypeOf<Result<string>>()
+
+    /** tapAsync */
+    expectTypeOf(AsyncResult.success('value').tapAsync(async () => null)).toEqualTypeOf<AsyncResult<string>>()
+    expectTypeOf(Result.success('value').tapAsync(async () => null)).toEqualTypeOf<AsyncResult<string>>()
+
+    /** map */
+    expectTypeOf(AsyncResult.success('value').map((v) => v.length)).toEqualTypeOf<AsyncResult<number>>()
+    expectTypeOf(Result.success('value').map((v) => v.length)).toEqualTypeOf<Result<number>>()
+
+    /** mapAsync */
+    expectTypeOf(AsyncResult.success('value').mapAsync(async (v) => v.length)).toEqualTypeOf<AsyncResult<number>>()
+    expectTypeOf(Result.success('value').mapAsync(async (v) => v.length)).toEqualTypeOf<AsyncResult<number>>()
+
+    /** flatMap */
+    expectTypeOf(AsyncResult.success('value').flatMap((v) => Result.success(v.length))).toEqualTypeOf<AsyncResult<number>>()
+    expectTypeOf(Result.success('value').flatMap((v) => Result.success(v.length))).toEqualTypeOf<Result<number>>()
+
+    /** flatMapAsync */
+    expectTypeOf(AsyncResult.success('value').flatMapAsync((v) => AsyncResult.success(v.length))).toEqualTypeOf<AsyncResult<number>>()
+    expectTypeOf(Result.success('value').flatMapAsync((v) => AsyncResult.success(v.length))).toEqualTypeOf<AsyncResult<number>>()
+
+    /** mapFailure */
+    expectTypeOf(AsyncResult.success('value').mapFailure((e) => new TypeError(e.message))).toEqualTypeOf<AsyncResult<string, TypeError>>()
+    expectTypeOf(Result.success('value').mapFailure((e) => new TypeError(e.message))).toEqualTypeOf<Result<string, TypeError>>()
+
+
+    /** mapEither */
+    expectTypeOf(AsyncResult.success('value').mapEither((v) => 1)).toEqualTypeOf<AsyncResult<number>>()
+    expectTypeOf(Result.success('value').mapEither((v) => 1)).toEqualTypeOf<Result<number>>()
+
+    /** mapEitherAsync */
+    expectTypeOf(AsyncResult.success('value').mapEitherAsync(async (v) => 1)).toEqualTypeOf<AsyncResult<number>>()
+    expectTypeOf(Result.success('value').mapEitherAsync(async (v) => 1)).toEqualTypeOf<AsyncResult<number>>()
+
+    /** tapEither */
+    expectTypeOf(AsyncResult.success('value').tapEither((v) => null)).toEqualTypeOf<AsyncResult<string>>()
+    expectTypeOf(Result.success('value').tapEither((v) => null)).toEqualTypeOf<Result<string>>()
+
+    /** tapEitherAsync */
+    expectTypeOf(AsyncResult.success('value').tapEitherAsync(async (v) => null)).toEqualTypeOf<AsyncResult<string>>()
+    expectTypeOf(Result.success('value').tapEitherAsync(async (v) => null)).toEqualTypeOf<AsyncResult<string>>()
+
+    const wrapped = AsyncResult.wrap(async (input: string) => input.length)
+
+    expectTypeOf(wrapped).toEqualTypeOf<(input: string) => AsyncResult<number>>()
+    expectTypeOf(wrapped.withTimeout(100)).toEqualTypeOf<(input: string) => AsyncResult<number>>()
+    expectTypeOf(wrapped.map((v) => v.toString())).toEqualTypeOf<(input: string) => AsyncResult<string>>()
+    expectTypeOf(wrapped.mapAsync(async (v) => v.toString())).toEqualTypeOf<(input: string) => AsyncResult<string>>()
+
+
+    expectTypeOf(wrapped.flatMapAsync((v) => AsyncResult.success(v.toString()))).toEqualTypeOf<(input: string) => AsyncResult<string>>()
+    expectTypeOf(wrapped.mapFailure((e) => new TypeError(e.message))).toEqualTypeOf<(input: string) => AsyncResult<number, TypeError>>()
+    expectTypeOf(wrapped.mapEither((v) => v.toString())).toEqualTypeOf<(input: string) => AsyncResult<string>>()
+    expectTypeOf(wrapped.mapEitherAsync(async (v) => v.toString())).toEqualTypeOf<(input: string) => AsyncResult<string>>()
+    expectTypeOf(wrapped.tapEither((v) => null)).toEqualTypeOf<(input: string) => AsyncResult<number>>()
+    expectTypeOf(wrapped.tapEitherAsync(async (v) => null)).toEqualTypeOf<(input: string) => AsyncResult<number>>()
   })
 })
