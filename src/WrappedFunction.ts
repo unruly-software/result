@@ -1,4 +1,4 @@
-import { AsyncResult } from './AsyncResult'
+import { AsyncResult, IsomorphicAbortController } from './AsyncResult'
 import { ResultTimeoutError } from './ResultTimeout'
 import { IntRange } from './methods'
 
@@ -77,7 +77,7 @@ export interface AsyncWrappedFunction<
 
   withTimeout<E extends Error = ResultTimeoutError>(
     ms: number,
-    error?: E,
+    extra?: { error?: E; abort?: IsomorphicAbortController },
   ): AsyncWrappedFunction<P, RT, F | E>
 
   withRetries<MaxRetries extends number>(
@@ -211,10 +211,10 @@ export function wrapAsyncFunction<
     return async (...args: Parameters<FN>) => wrapped(...args).get() as any
   }
 
-  wrapped.withTimeout = (ms, error) => {
+  wrapped.withTimeout = (ms, extra) => {
     return wrapAsyncFunction(async (...args: Parameters<FN>) => {
       return wrapped(...args)
-        .withTimeout(ms, error)
+        .withTimeout(ms, extra)
         .get()
     })
   }
