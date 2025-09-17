@@ -1,7 +1,7 @@
 {
   "name": "@unruly-software/result",
   "packageManager": "yarn@3.5.0",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "license": "MIT",
   "type": "module",
   "scripts": {

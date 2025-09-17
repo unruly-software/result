@@ -1,5 +1,13 @@
 # @unruly-software/result
 
+## 1.1.0
+
+### Minor Changes
+
+- 49058a7: Add { abort?: AbortController } to withTimeout
+
+  Fixes types for "invoke" and "invokeAsync" to unwrap the type of the function.
+
 ## 1.0.2
 
 ### Patch Changes
